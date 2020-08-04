@@ -52,6 +52,16 @@ keyATM_fit_cov <- function(model, iter = 0L) {
     .Call(`_keyATM_keyATM_fit_cov`, model, iter)
 }
 
+#' Run the Collapsed Gibbs sampler for the keyATM multicorpora with covariates
+#'
+#' @param model A initialized model
+#' @param iter Required number of iterations
+#'
+#' @keywords internal
+keyATM_fit_multi <- function(model, iter = 0L) {
+    .Call(`_keyATM_keyATM_fit_multi`, model, iter)
+}
+
 #' Run the Collapsed Gibbs sampler for the keyATM Dynamic
 #'
 #' @param model A initialized model

@@ -29,7 +29,7 @@
 #' @export
 keyATM_read <- function(texts, encoding = "UTF-8", check = TRUE, progress_bar = FALSE)
 {
-
+  
   # Detect input
   if ("tbl" %in% class(texts)) {
     message("Using tibble.")
@@ -56,9 +56,9 @@ keyATM_read <- function(texts, encoding = "UTF-8", check = TRUE, progress_bar = 
     stop("Check `texts` argument.\n
          It can take quanteda dfm, data.frame, tibble, and a vector of characters.")  
   }
-
+  
   # Read texts
-
+  
   # If you have quanteda object
   if (!is.null(text_dfm)) {
     vocabulary <- colnames(text_dfm)
@@ -69,28 +69,28 @@ keyATM_read <- function(texts, encoding = "UTF-8", check = TRUE, progress_bar = 
     # Use files <- list.files(doc_folder, pattern = "txt", full.names = TRUE) when you pass
     if (is.null(text_df)) {
       text_df <- tibble::tibble(text = unlist(lapply(files,
-                                                 function(x)
-                                                 { 
-                                                     paste0(readLines(x, encoding = encoding),
-                                                           collapse = "\n") 
-                                                 })))
+                                                     function(x)
+                                                     { 
+                                                       paste0(readLines(x, encoding = encoding),
+                                                              collapse = "\n") 
+                                                     })))
     }
     text_df <- text_df %>% dplyr::mutate(text_split = stringr::str_split(.data$text, pattern = " "))
-
+    
     # extract splitted text and create a list
     W_raw <- text_df %>% dplyr::pull(.data$text_split)
   }
-
+  
   
   # check whether there is nothing wrong with the structure of texts
   if (check) {
     check_vocabulary(unique(unlist(W_raw, use.names = FALSE, recursive = FALSE))) 
     doc_index <- get_doc_index(W_raw, check = TRUE)
   }
-
+  
   # Assign class
   class(W_raw) <- c("keyATM_docs", class(W_raw))
-
+  
   return(W_raw)
 }
 
@@ -100,10 +100,10 @@ keyATM_read <- function(texts, encoding = "UTF-8", check = TRUE, progress_bar = 
 print.keyATM_docs <- function(x, ...)
 {
   cat(paste0("keyATM_docs object of ",
-                 length(x), " documents",
-                 ".\n"
-                )
-      )
+             length(x), " documents",
+             ".\n"
+  )
+  )
 }
 
 
@@ -113,17 +113,17 @@ summary.keyATM_docs <- function(object, ...)
 {
   doc_len <- sapply(object, length)
   cat(paste0("keyATM_docs object of: ",
-              length(object), " documents",
-              ".\n",
-              "Length of documents:",
-              "\n  Avg: ", round(mean(doc_len), 3),
-              "\n  Min: ", round(min(doc_len), 3),
-              "\n  Max: ", round(max(doc_len), 3),
-              "\n   SD: ", round(stats::sd(doc_len), 3),
-              "\nNumber of unique words: ", length(unique(unlist(object, use.names = FALSE, recursive = FALSE))),
-              "\n"
-             )  
-         )
+             length(object), " documents",
+             ".\n",
+             "Length of documents:",
+             "\n  Avg: ", round(mean(doc_len), 3),
+             "\n  Min: ", round(min(doc_len), 3),
+             "\n  Max: ", round(max(doc_len), 3),
+             "\n   SD: ", round(stats::sd(doc_len), 3),
+             "\nNumber of unique words: ", length(unique(unlist(object, use.names = FALSE, recursive = FALSE))),
+             "\n"
+  )  
+  )
 }
 
 
@@ -165,16 +165,16 @@ visualize_keywords <- function(docs, keywords, prune = TRUE, label_size = 3.2)
   check_arg_type(docs, "keyATM_docs", "Please use `keyATM_read()` to read texts.")
   check_arg_type(keywords, "list")
   c <- lapply(keywords, function(x){check_arg_type(x, "character")})
-
+  
   unlisted <- unlist(docs, recursive = FALSE, use.names = FALSE)
-
+  
   # Check keywords
   keywords <- check_keywords(unique(unlisted), keywords, prune)
-
+  
   # Organize data
   unnested_data <- tibble::tibble(text_split = unlisted)
   totalwords <- nrow(unnested_data)
-
+  
   unnested_data %>%
     dplyr::rename(Word = .data$text_split) %>%
     dplyr::group_by(.data$Word) %>%
@@ -182,11 +182,11 @@ visualize_keywords <- function(docs, keywords, prune = TRUE, label_size = 3.2)
     dplyr::mutate(`Proportion(%)` = round(.data$WordCount / totalwords * 100, 3)) %>%
     dplyr::arrange(dplyr::desc(.data$WordCount)) %>%
     dplyr::mutate(Ranking = 1:(dplyr::n())) -> data
-
+  
   keywords <- lapply(keywords, function(x) {unlist(strsplit(x," "))})
   ext_k <- length(keywords)
   max_num_words <- max(unlist(lapply(keywords, function(x) {length(x)}), use.names = FALSE))
-
+  
   # Make keywords_df
   keywords_df <- data.frame(Topic = 1, Word = 1)
   tnames <- names(keywords)
@@ -198,34 +198,34 @@ visualize_keywords <- function(docs, keywords, prune = TRUE, label_size = 3.2)
     } else {
       topicname <- paste0(k, "_", tnames[k]) 
     }
-
+    
     for (w in 1:numwords) {
       keywords_df <- rbind(keywords_df, data.frame(Topic = topicname, Word = words[w]))
     }
   }
   keywords_df <- keywords_df[2:nrow(keywords_df), ]
   keywords_df$Topic <- factor(keywords_df$Topic, levels = unique(keywords_df$Topic))
-
+  
   dplyr::right_join(data, keywords_df, by = "Word") %>%
     dplyr::group_by(.data$Topic) %>%
     dplyr::arrange(dplyr::desc(.data$WordCount)) %>%
     dplyr::mutate(Ranking  =  1:(dplyr::n())) %>%
     dplyr::arrange(.data$Topic, .data$Ranking) -> temp
-
+  
   # Visualize
   visualize_keywords <- 
     ggplot(temp, aes(x = .data$Ranking, y = .data$`Proportion(%)`, colour = .data$Topic)) +
-      geom_line() +
-      geom_point() +
-      ggrepel::geom_label_repel(aes(label = .data$Word), size = label_size,
-                       box.padding = 0.20, label.padding = 0.12,
-                       arrow = arrow(angle = 10, length = unit(0.10, "inches"),
-                                   ends = "last", type = "closed"),
-                       show.legend = FALSE) +
-      scale_x_continuous(breaks = 1:max_num_words) +
-      xlab("Ranking") + ylab("Proportion (%)") +
-      theme_bw()
-
+    geom_line() +
+    geom_point() +
+    ggrepel::geom_label_repel(aes(label = .data$Word), size = label_size,
+                              box.padding = 0.20, label.padding = 0.12,
+                              arrow = arrow(angle = 10, length = unit(0.10, "inches"),
+                                            ends = "last", type = "closed"),
+                              show.legend = FALSE) +
+    scale_x_continuous(breaks = 1:max_num_words) +
+    xlab("Ranking") + ylab("Proportion (%)") +
+    theme_bw()
+  
   keyATM_viz <- list(figure = visualize_keywords, values = temp, keywords = keywords)
   class(keyATM_viz) <- c("keyATM_fig", "keyATM_viz", class(keyATM_viz))
   
@@ -238,46 +238,46 @@ check_keywords <- function(unique_words, keywords, prune)
   # Prune keywords that do not appear in the corpus
   keywords_flat <- unlist(keywords, use.names = FALSE, recursive = FALSE)
   non_existent <- keywords_flat[!keywords_flat %in% unique_words]
-
+  
   if (prune) {
     # Prune keywords 
     if (length(non_existent) != 0) {
-     if (length(non_existent) == 1) {
-       warning("A keyword will be pruned because it does not appear in documents: ",
-               paste(non_existent, collapse = ", "), immediate. = TRUE)
-     } else {
-       warning("Keywords will be pruned because they do not appear in documents: ",
-               paste(non_existent, collapse = ", "), immediate. = TRUE)
-     }
+      if (length(non_existent) == 1) {
+        warning("A keyword will be pruned because it does not appear in documents: ",
+                paste(non_existent, collapse = ", "), immediate. = TRUE)
+      } else {
+        warning("Keywords will be pruned because they do not appear in documents: ",
+                paste(non_existent, collapse = ", "), immediate. = TRUE)
+      }
     }
-
+    
     keywords <- lapply(keywords,
                        function(x) {
-                          x[!x %in% non_existent] 
+                         x[!x %in% non_existent] 
                        })
-
+    
   } else {
-
+    
     # Raise error 
     if (length(non_existent) != 0) {
-     if (length(non_existent) == 1) {
-       stop("A keyword not found in texts: ", paste(non_existent, collapse = ", "))
-     } else {
-       stop("Keywords not found in texts: ", paste(non_existent, collapse = ", "))
-     }
+      if (length(non_existent) == 1) {
+        stop("A keyword not found in texts: ", paste(non_existent, collapse = ", "))
+      } else {
+        stop("Keywords not found in texts: ", paste(non_existent, collapse = ", "))
+      }
     } 
-
+    
   }
-
+  
   # Check there is at least one keywords in each topic
   num_keywords <- unlist(lapply(keywords, length))
   check_zero <- which(as.vector(num_keywords) == 0)
-
+  
   if (length(check_zero) != 0) {
     zero_names <- names(keywords)[check_zero]
     stop(paste0("All keywords are pruned. Please check: ", paste(zero_names, collapse = ", ")))
   }
-
+  
   return(keywords)
 }
 
@@ -316,24 +316,24 @@ keyATM_fit <- function(docs, model, no_keyword_topics,
   ##
   ## Check
   ##
-
+  
   # Check type
   check_arg_type(docs, "keyATM_docs", "Please use `keyATM_read()` to read texts.")
   if (!is.integer(no_keyword_topics) & !is.numeric(no_keyword_topics))
-    stop("`no_keyword_topics` is neigher numeric nor integer.")
-
+    stop("`no_keyword_topics` is neither numeric nor integer.")
+  
   no_keyword_topics <- as.integer(no_keyword_topics)
-
-  if (!model %in% c("base", "cov", "hmm", "lda", "ldacov", "ldahmm", "label")) {
+  
+  if (!model %in% c("base", "cov", "hmm", "lda", "ldacov", "ldahmm", "label", "multi")) {
     stop("Please select a correct model.")  
   }
-
+  
   info <- list(
-                models_keyATM = c("base", "cov", "hmm", "label"),
-                models_lda = c("lda", "ldacov", "ldahmm")
-              )
+    models_keyATM = c("base", "cov", "hmm", "label", "multi"),
+    models_lda = c("lda", "ldacov", "ldahmm")
+  )
   keywords <- check_arg(keywords, "keywords", model, info)
-
+  
   # Get Info
   info$use_doc_index <- get_doc_index(docs)
   docs <- docs[info$use_doc_index]
@@ -341,39 +341,39 @@ keyATM_fit <- function(docs, model, no_keyword_topics,
   info$keyword_k <- length(keywords)
   info$total_k <- length(keywords) + no_keyword_topics
   info$num_core <- max(1, parallel::detectCores(all.tests = FALSE, logical = TRUE) - 2L)
-
+  
   # Set default values
   model_settings <- check_arg(model_settings, "model_settings", model, info)
   priors <- check_arg(priors, "priors", model, info)
   options <- check_arg(options, "options", model, info)
   info$parallel_init <- options$parallel_init
-
-
+  
+  
   ##
   ## Initialization
   ##
   message("Initializing the model...")
   set.seed(options$seed)
-
+  
   # W
   info$wd_names <- unique(unlist(docs, use.names = FALSE, recursive = FALSE))
   check_vocabulary(info$wd_names)
-
+  
   info$wd_map <- myhashmap(info$wd_names, 1:length(info$wd_names) - 1L)
-
+  
   if (info$parallel_init) {
     W <- parallel::mclapply(docs, function(x) { myhashmap_getvec(info$wd_map, x) }, mc.cores = info$num_core)
   } else {
     W <- lapply(docs, function(x) { myhashmap_getvec(info$wd_map, x) })
   }
-
+  
   # Check keywords
   keywords <- check_keywords(info$wd_names, keywords, options$prune)
-
+  
   keywords_raw <- keywords  # keep raw keywords (not word_id)
   keywords_id <- lapply(keywords, function(x) { myhashmap_getvec(info$wd_map, x) })
   info$keywords_id <- unlist(keywords_id, use.names = FALSE, recursive = FALSE)
-
+  
   # Assign S and Z
   if (model %in% info$models_keyATM) {
     res <- make_sz_key(W, keywords, info)
@@ -386,66 +386,70 @@ keyATM_fit <- function(docs, model, no_keyword_topics,
     Z <- res$Z
   }
   rm(res)
-
+  
   # Organize
   stored_values <- list(vocab_weights = rep(-1, length(info$wd_names)),
                         doc_index = info$use_doc_index)
-
+  
   if (model %in% c("base", "lda", "label")) {
     if (options$estimate_alpha)
       stored_values$alpha_iter <- list()  
   }
-
+  
   if (model %in% c("hmm", "ldahmm")) {
     options$estimate_alpha <- 1
     stored_values$alpha_iter <- list()  
   }
-
-
+  
+  
   if (model %in% c("cov", "ldacov")) {
     stored_values$Lambda_iter <- list()
   }
-
+  
+  if(model %in% c("multi")) {
+    stored_values$Lambda_iter <- rep(list(vector("list", model_settings$num_corpus)), options$iterations)
+  }
+  
   if (model %in% c("hmm", "ldahmm")) {
     stored_values$R_iter <- list()
-
+    
     if (options$store_transition_matrix) {
       stored_values$P_iter <- list()  
     }
   }
-
+  
   if (model %in% info$models_keyATM) {
     if (options$store_pi)
       stored_values$pi_vectors <- list() 
   }
-
+  
   if (options$store_theta)
     stored_values$Z_tables <- list()
-
+  
   key_model <- list(
-                    W = W, Z = Z, S = S,
-                    model = abb_model_name(model),
-                    keywords = keywords_id, keywords_raw = keywords_raw,
-                    no_keyword_topics = no_keyword_topics,
-                    keyword_k = length(keywords_raw),
-                    vocab = info$wd_names,
-                    model_settings = model_settings,
-                    priors = priors,
-                    options = options,
-                    stored_values = stored_values,
-                    model_fit = list(),
-                    call = match.call()
-                   )
-
+    W = W, Z = Z, S = S,
+    model = abb_model_name(model),
+    keywords = keywords_id, keywords_raw = keywords_raw,
+    no_keyword_topics = no_keyword_topics,
+    keyword_k = length(keywords_raw),
+    vocab = info$wd_names,
+    model_settings = model_settings,
+    priors = priors,
+    options = options,
+    stored_values = stored_values,
+    model_fit = list(),
+    call = match.call()
+  )
+  
   rm(info)
   class(key_model) <- c("keyATM_model", model, class(key_model))
-
+  
   if (options$iterations == 0) {
     message("`options$iterations` is 0. keyATM returns an initialized object.")  
     return(key_model)
   }
-
-
+  
+  
   ##
   ## Fitting
   ##
@@ -457,11 +461,13 @@ fitting_models <- function(key_model, model, options)
 {
   message(paste0("Fitting the model. ", options$iterations, " iterations..."))
   set.seed(options$seed)
-
+  
   if (model == "base") {
     key_model <- keyATM_fit_base(key_model, iter = options$iterations)
   } else if (model == "cov") {
     key_model <- keyATM_fit_cov(key_model, iter = options$iteration)
+  } else if (model == "multi") {
+    key_model <- keyATM_fit_multi(key_model, iter = options$iteration)
   } else if (model == "hmm") {
     key_model <- keyATM_fit_HMM(key_model, iter = options$iteration)  
   } else if (model == "lda") {
@@ -475,7 +481,7 @@ fitting_models <- function(key_model, model, options)
   } else {
     stop("Please check `mode`.")
   }
-
+  
   class(key_model) <- c("keyATM_fitted", class(key_model))
   return(key_model)
 }
@@ -486,13 +492,13 @@ fitting_models <- function(key_model, model, options)
 print.keyATM_model <- function(x, ...)
 {
   cat(
-      paste0(
-             "keyATM_model object for the ",
-             x$model,
-             " model.\nThis is an initialized object without fitting the model.",
-             "\n"
-            )
-     )
+    paste0(
+      "keyATM_model object for the ",
+      x$model,
+      " model.\nThis is an initialized object without fitting the model.",
+      "\n"
+    )
+  )
 }
 
 
@@ -501,19 +507,19 @@ check_arg <- function(obj, name, model, info = list())
   if (name == "keywords") {
     return(check_arg_keywords(obj, model, info))
   }
-
+  
   if (name == "model_settings") {
     return(check_arg_model_settings(obj, model, info))  
   }
-
+  
   if (name == "priors") {
     return(check_arg_priors(obj, model, info))  
   }
-
+  
   if (name == "options") {
     return(check_arg_options(obj, model, info))  
   }
-
+  
   if (name == "vb_options") {
     return(check_arg_vboptions(obj, model, info))  
   }
@@ -523,16 +529,16 @@ check_arg <- function(obj, name, model, info = list())
 check_arg_keywords <- function(keywords, model, info)
 {
   check_arg_type(keywords, "list")
-
+  
   if (length(keywords) == 0 & model %in% info$models_keyATM) {
     stop("Please provide keywords.")  
   }
-
+  
   if (length(keywords) != 0 & model %in% info$models_lda) {
     stop("This model does not take keywords.")  
   }
-
-
+  
+  
   # Name of keywords topic
   if (model %in% info$models_keyATM) {
     c <- lapply(keywords, function(x) {check_arg_type(x, "character")})
@@ -542,7 +548,7 @@ check_arg_keywords <- function(keywords, model, info)
       names(keywords)  <- paste0(1:length(keywords), "_", names(keywords))
     }
   }
-
+  
   return(keywords)
 }
 
@@ -552,11 +558,11 @@ show_unused_arguments <- function(obj, name, allowed_arguments)
   unused_input <- names(obj)[! names(obj) %in% allowed_arguments]
   if (length(unused_input) != 0)
     stop(paste0(
-                "keyATM doesn't recognize some of the arguments ",
-                "in ", name, ": ",
-                paste(unused_input, collapse=", ")
-               )
-        )
+      "keyATM doesn't recognize some of the arguments ",
+      "in ", name, ": ",
+      paste(unused_input, collapse=", ")
+    )
+    )
 }
 
 
@@ -564,8 +570,8 @@ check_arg_model_settings <- function(obj, model, info)
 {
   check_arg_type(obj, "list")
   allowed_arguments <- c()
-
-  if (model %in% c("base", "lda", "hmm", "ldahmm", "label")) {
+  
+  if (model %in% c("base", "lda", "hmm", "ldahmm", "label", "multi")) {
     # Slice Sampling Settings
     if (is.null(obj$slice_min)) {
       obj$slice_min <- 1e-9 
@@ -577,7 +583,7 @@ check_arg_model_settings <- function(obj, model, info)
         stop("`model_settings$slice_min` should be a positive value.")
       }
     }
-
+    
     if (is.null(obj$slice_max)) {
       obj$slice_max <- 100 
     } else {
@@ -588,54 +594,78 @@ check_arg_model_settings <- function(obj, model, info)
         stop("`model_settings$slice_max` should be a positive value.")
       }
     }
-
+    
     allowed_arguments <- c(allowed_arguments, "slice_min", "slice_max")
   }
-
+  
   # check model settings for covariate model
-  if (model %in% c("cov", "ldacov")) { 
-     if (is.null(obj$covariates_data)) {
+  if (model %in% c("cov", "ldacov", "multi")) { 
+    if (is.null(obj$covariates_data)) {
       stop("Please provide `obj$covariates_data`.")  
     }
-
-    obj$covariates_data <- as.data.frame(obj$covariates_data)[info$use_doc_index, , drop = FALSE]
-
-    if (nrow(obj$covariates_data) != info$num_doc) {
-      stop("The row of `model_settings$covariates_data` should be the same as the number of documents.")  
+    if(model == "multi"){
+      if(!is.list(obj$covariates_data))
+        stop("When model is 'multicorpora', `obj$covariates_data` should be a list of matrices or data frames")
+      obj$covariates_data <- mapply(function(dat, use_obs){as.data.frame(dat)[use_obs, , drop = FALSE]},
+                                    obj$covariates_data, info$use_doc_index)
+      if((Reduce("+", Map(nrow, obj$covariates_data)) != info$num_doc))
+        stop("When model is 'multicorpora', the sum of the rows of all elements in `covariates_data` should be the same as the number of documents.")
+    } else{
+      obj$covariates_data <- as.data.frame(obj$covariates_data)[info$use_doc_index, , drop = FALSE]
+      if (nrow(obj$covariates_data) != info$num_doc) {
+        stop("The row of `obj$covariates_data` should be the same as the number of documents.")  
+      }
     }
-
-    if (sum(is.na(obj$covariates_data)) != 0) {
+    
+    if (any(is.na(unlist(obj$covariates_data)))) {
       stop("Covariate data should not contain missing values.")
     }
-
+    
     if (is.null(obj$covariates_formula)) {
       obj$covariates_formula <- NULL  # do not need to change the matrix
+    } else if (model == "multi") {
+      if(!is.list(obj$covariates_formula) | !all(sapply(obj$covariates_formula, is.formula))) {
+        stop("When model is 'multicorpora' and formulas are used, `obj$covariates_formula` must be a list of formulas.")
+      }
     }
-
+    
+    
     if (is.null(obj$standardize)) 
       obj$standardize <- "non-factor" 
     if (!obj$standardize %in% c("all", "none", "non-factor"))
       stop('Unknown option in `standardize`. It should be one of "all", "none", or "non-factor".')
-
+    
     # Standardize
-    obj$covariates_data_use <- covariates_standardize(obj$covariates_data, obj$standardize, obj$covariates_formula)
-
-    # Check if it works as a valid regression 
-    temp <- as.data.frame(obj$covariates_data_use)
-    temp$y <- stats::rnorm(nrow(obj$covariates_data_use))
-
-    if ("(Intercept)" %in% colnames(obj$covariates_data_use)) {
-      fit <- stats::lm(y ~ 0 + ., data = temp)  # data.frame already includes the intercept
-      if (NA %in% fit$coefficients) {
-        stop("Covariates are invalid.")    
-      }    
+    if(model != "multi"){
+      obj$covariates_data_use <- covariates_standardize(obj$covariates_data, obj$standardize, obj$covariates_formula)
     } else {
-      fit <- stats::lm(y ~ ., data = temp)  # data.frame does not have an itercept
-      if (NA %in% fit$coefficients) {
-        stop("Covariates are invalid.")    
+      obj$covariates_data_use <- mapply(function(form,dat)
+      {
+        covariates_standardize(dat, obj$standardize, form)
+      },
+      obj$covariates_data,obj$covariates_formula,
+      SIMPLIFY = FALSE)
+      
+    }
+    
+    # Check if it works as a valid regression 
+    for(dat in as.list(obj$covariates_data_use)) {
+      temp <- as.data.frame(dat)
+      temp$y <- stats::rnorm(nrow(dat)) 
+      if ("(Intercept)" %in% colnames(dat)){
+        fit <- stats::lm(y ~ 0 + ., data = temp)  # data.frame alreayd includes the intercept
+        if (NA %in% fit$coefficients) {
+          stop("Covariates are invalid.")    
+        }    
+      } else {
+        fit <- stats::lm(y ~ ., data = temp)
+        if (NA %in% fit$coefficients) {
+          stop("Covariates are invalid.")    
+        }
       }
     }
-
+    
+    
     # Slice Sampling Settings
     if (is.null(obj$slice_min)) {
       obj$slice_min <- -5.0 
@@ -644,7 +674,7 @@ check_arg_model_settings <- function(obj, model, info)
         stop("`model_settings$slice_min` should be a numeric value.")
       }
     }
-
+    
     if (is.null(obj$slice_max)) {
       obj$slice_max <- 5.0 
     } else {
@@ -652,7 +682,7 @@ check_arg_model_settings <- function(obj, model, info)
         stop("`model_settings$slice_max` should be a numeric value.")
       }
     }
-
+    
     # MH option
     if (is.null(obj$mh_use)) {
       obj$mh_use <- 0 
@@ -662,24 +692,37 @@ check_arg_model_settings <- function(obj, model, info)
         stop("`model_settings$mh_use` should be TRUE/FALSE (0/1)") 
       }
     }
-
+    
     allowed_arguments <- c(allowed_arguments, "covariates_data", "covariates_data_use",
                            "slice_min", "slice_max", "mh_use",
                            "covariates_formula", "standardize", "info")
+    
+    if(model == "multi") {
+      obj$num_corpus <- length(obj$covariates_data_use)
+      obj$corpus_id <- rep(seq_along(obj$covariates_data_use),
+                           times=sapply(obj$covariates_data_use, nrow)) - 1
+      obj$internal_id <- unlist(lapply(obj$covariates_data_use,
+                                       function(dat){
+                                         seq.int(0, nrow(dat) - 1)
+                                       }))
+      obj$global_id <- split(seq_len(info$num_doc) - 1, obj$corpus_id)
+      allowed_arguments <- c(allowed_arguments, "num_corpus", "corpus_id",
+                             "internal_id","global_id")
+    }
   }  # cov model end
-
+  
   # check model settings for dynamic model
   if (model %in% c("hmm", "ldahmm")) {
     if (is.null(obj$num_states)) {
       stop("`model_settings$num_states` is not provided.")  
     }
-
+    
     if (is.null(obj$time_index)) {
       stop("`model_settings$time_index` is not provided.")
     }
-
+    
     obj$time_index <- obj$time_index[info$use_doc_index]
-
+    
     if (length(obj$time_index) != info$num_doc) {
       stop("The length of the `model_settings$time_index` does not match with the number of documents.")  
     }
@@ -687,47 +730,47 @@ check_arg_model_settings <- function(obj, model, info)
     if (min(obj$time_index) != 1 | max(obj$time_index) > info$num_doc) {
       stop("`model_settings$time_index` should start from 1 and not exceed the number of documents.")
     }
-
+    
     if (max(obj$time_index) < obj$num_states)
       stop("`model_settings$num_states` should not exceed the maximum of `model_settings$time_index`.")
-
-
+    
+    
     check <- unique(obj$time_index[2:length(obj$time_index)] - obj$time_index[1:(length(obj$time_index)-1)])
     if (sum(!unique(check) %in% c(0,1)) != 0)
       stop("`model_settings$time_index` does not increment by 1.")
-
+    
     obj$time_index <- as.integer(obj$time_index)
-
+    
     allowed_arguments <- c(allowed_arguments, "num_states", "time_index")
     
   }
-
+  
   # check model settings for label model
   if (model %in% "label") {
     if (is.null(obj$labels)) {
       stop("`model_settings$labels` is not provided.")
     }
-
+    
     obj$labels <- obj$labels[info$use_doc_index]
-
+    
     if (length(obj$labels) != info$num_doc) {
       stop("The length of `model_settings$labels` does not match with the number of documents")
     }
     if (max(obj$labels, na.rm = TRUE) > info$keyword_k | min(obj$labels, na.rm = TRUE) <= 0) {
       stop("`model_settings$labels` must only contain integer values less than the total number of the keyword topics for labeled documents and `NA` should be assigned to non-labeled documents.")
     }
-   
+    
     obj$labels[is.na(obj$labels)] <- 0 # insert -1 to NA values
     obj$labels <- as.integer(obj$labels) - 1L  # index starts from 0 in C++, you do not need to worry about NA here
     
-
+    
     if (!isTRUE(all(obj$labels == floor(obj$labels)))) {
       stop("`model_settings$labels` must only contain integer values for labeled documents and `NA` should be assigned to non-labeled documents")
     }
-
+    
     allowed_arguments <- c(allowed_arguments, "labels")
   }
-
+  
   show_unused_arguments(obj, "`model_settings`", allowed_arguments)
   return(obj)
 }
@@ -738,20 +781,20 @@ check_arg_priors <- function(obj, model, info)
   check_arg_type(obj, "list")
   # Base arguments
   allowed_arguments <- c("beta")
-
+  
   # prior of pi
   if (model %in% info$models_keyATM) {
     if (is.null(obj$gamma)) {
       obj$gamma <- matrix(1.0, nrow = info$total_k, ncol = 2)  
     }
-
+    
     if (!is.null(obj$gamma)) {
       if (dim(obj$gamma)[1] != info$total_k)  
         stop("Check the dimension of `priors$gamma`")
       if (dim(obj$gamma)[2] != 2)  
         stop("Check the dimension of `priors$gamma`")
     }
-
+    
     if (info$keyword_k < info$total_k) {
       # Regular topics are used in keyATM models
       # Priors for regular topics should be 0
@@ -759,24 +802,24 @@ check_arg_priors <- function(obj, model, info)
         obj$gamma[(info$keyword_k+1):info$total_k, ] <- 0
       }
     }
-
+    
     allowed_arguments <- c(allowed_arguments, "gamma")
   }
-
-
+  
+  
   # beta
   if (!"beta" %in% names(obj)) {
     obj$beta <- 0.01  
   }
-
+  
   if (model %in% info$models_keyATM) {
     if (!"beta_s" %in% names(obj)) {
       obj$beta_s <- 0.1  
     }  
     allowed_arguments <- c(allowed_arguments, "beta_s")
   }
-
-
+  
+  
   # alpha
   if (model %in% c("base", "lda", "label")) {
     if (is.null(obj$alpha)) {
@@ -786,9 +829,9 @@ check_arg_priors <- function(obj, model, info)
       stop("Starting alpha must be a vector of length ", info$total_k)
     }
     allowed_arguments <- c(allowed_arguments, "alpha")
-  
+    
   }
-
+  
   show_unused_arguments(obj, "`priors`", allowed_arguments)
   return(obj)
 }
@@ -802,16 +845,16 @@ check_arg_options <- function(obj, model, info)
                          "use_weights", "weights_type", 
                          "prune", "store_theta", "slice_shape",
                          "parallel_init")
-
+  
   # llk_per
   if (is.null(obj$llk_per))
     obj$llk_per <- 10L
-
+  
   if (!is.numeric(obj$llk_per) | obj$llk_per < 0 | obj$llk_per%%1 != 0) {
-      stop("An invalid value in `options$llk_per`")  
+    stop("An invalid value in `options$llk_per`")  
   }
-
-
+  
+  
   # verbose
   if (is.null(obj$verbose)) {
     obj$verbose <- 0L 
@@ -821,26 +864,26 @@ check_arg_options <- function(obj, model, info)
       stop("An invalid value in `options$verbose`")  
     }
   }
-
+  
   # thinning
   if (is.null(obj$thinning))
     obj$thinning <- 5L
-
+  
   if (!is.numeric(obj$thinning) | obj$thinning < 0| obj$thinning%%1 != 0) {
-      stop("An invalid value in `options$thinning`")  
+    stop("An invalid value in `options$thinning`")  
   }
-
+  
   # seed
   if (is.null(obj$seed))
     obj$seed <- floor(stats::runif(1)*1e5)
-
+  
   # iterations
   if (is.null(obj$iterations))
     obj$iterations <- 1500L
   if (!is.numeric(obj$iterations) | obj$iterations < 0| obj$iterations%%1 != 0) {
-      stop("An invalid value in `options$iterations`")  
+    stop("An invalid value in `options$iterations`")  
   }
-
+  
   # Store theta
   if (is.null(obj$store_theta)) {
     obj$store_theta <- 0L
@@ -850,7 +893,7 @@ check_arg_options <- function(obj, model, info)
       stop("An invalid value in `options$store_theta`")  
     }
   }
-
+  
   # Store pi
   if (model %in% info$models_keyATM) {
     if (is.null(obj$store_pi)) {
@@ -863,8 +906,8 @@ check_arg_options <- function(obj, model, info)
     }
     allowed_arguments <- c(allowed_arguments, "store_pi")
   }
-
-
+  
+  
   # Estimate alpha
   if (model %in% c("base", "lda", "label")) {
     if (is.null(obj$estimate_alpha)) {
@@ -874,7 +917,7 @@ check_arg_options <- function(obj, model, info)
       if (!obj$estimate_alpha %in% c(0, 1)) {
         stop("An invalid value in `options$estimate_alpha`")  
       }
-
+      
     }
     allowed_arguments <- c(allowed_arguments, "estimate_alpha")
   }
@@ -885,9 +928,9 @@ check_arg_options <- function(obj, model, info)
     obj$slice_shape <- 1.2
   }
   if (!is.numeric(obj$slice_shape) | obj$slice_shape < 0) {
-      stop("An invalid value in `options$slice_shape`")  
+    stop("An invalid value in `options$slice_shape`")  
   }
-
+  
   # Use weights
   if (is.null(obj$use_weights)) {
     obj$use_weights <- 1L 
@@ -897,7 +940,7 @@ check_arg_options <- function(obj, model, info)
       stop("An invalid value in `options$use_weights`")  
     }
   }
-
+  
   # Type of the weights
   if (is.null(obj$weights_type)) {
     obj$weights_type <- "information-theory" 
@@ -908,7 +951,7 @@ check_arg_options <- function(obj, model, info)
       stop("An invalid value in `options$weights_type`") 
     }
   }
-
+  
   # Prune keywords
   if (is.null(obj$prune)) {
     obj$prune <- 1L 
@@ -918,7 +961,7 @@ check_arg_options <- function(obj, model, info)
       stop("An invalid value in `options$prune`")  
     }
   }
-
+  
   # Store transition matrix in Dynamic models
   if (model %in% c("hmm", "ldahmm")) {
     if (is.null(obj$store_transition_matrix)) {
@@ -929,7 +972,7 @@ check_arg_options <- function(obj, model, info)
     }
     allowed_arguments <- c(allowed_arguments, "store_transition_matrix")
   }
-
+  
   # Use parallel function in initialization
   if (!"parallel_init" %in% names(obj)) {
     obj$parallel_init <- FALSE 
@@ -939,7 +982,7 @@ check_arg_options <- function(obj, model, info)
     }
   }
   allowed_arguments <- c(allowed_arguments, "parallel_init")
-
+  
   # Check unused arguments
   show_unused_arguments(obj, "`options`", allowed_arguments)
   return(obj)
@@ -951,19 +994,19 @@ check_vocabulary <- function(vocab)
   if (" " %in% vocab) {
     stop("A space is recognized as a vocabulary. Please remove an empty document or consider using quanteda::dfm.")  
   }
-
+  
   if ("" %in% vocab) {
     stop('A blank `""` is recognized as a vocabulary. Please review preprocessing steps.')  
   }
-
+  
   if (sum(stringr::str_detect(vocab, "^[:upper:]+$")) != 0) {
     warning('Upper case letters are used. Please review preprocessing steps.', immediate. = TRUE)  
   }
-
+  
   if (sum(stringr::str_detect(vocab, "\t")) != 0) {
     warning('Tab is detected in the vocabulary. Please review preprocessing steps.', immediate. = TRUE)
   }
-
+  
   if (sum(stringr::str_detect(vocab, "\n")) != 0) {
     warning('A line break is detected in the vocabulary. Please review preprocessing steps.', immediate. = TRUE)
   }
@@ -975,13 +1018,13 @@ make_sz_key <- function(W, keywords, info)
   # zs_assigner maps keywords to category ids
   key_wdids <- info$keywords_id
   cat_ids <- rep(1:(info$keyword_k) - 1L, unlist(lapply(keywords, length)))
-
+  
   if (length(key_wdids) == length(unique(key_wdids))) {
     #
     # No keyword appears more than once
     #
     zs_assigner <- myhashmap_keyint(as.integer(key_wdids), as.integer(cat_ids))
-
+    
     # if the word is a keyword, assign the appropriate (0 start) Z, else a random Z
     topicvec <- 1:(info$total_k) - 1L
     make_z <- function(s, topicvec) {
@@ -989,7 +1032,7 @@ make_sz_key <- function(W, keywords, info)
       zz[is.na(zz)] <- sample(topicvec, sum(is.na(zz)), replace = TRUE)
       return(zz)
     }
-
+    
   } else {
     #
     # Some keywords appear multiple times
@@ -1000,7 +1043,7 @@ make_sz_key <- function(W, keywords, info)
                           paste(as.character(keys_df[keys_df$wid == x, "cat"]), collapse=",")
                         })
     zs_hashtable <- myhashmap_keyint(as.integer(unique(key_wdids)), keys_char)
-
+    
     zs_assigner <- function(s) {
       topic <- myhashmap_getvec_keyint(zs_hashtable, s)
       topic <- strsplit(as.character(topic), split=",")  # this function should take a character vector
@@ -1008,7 +1051,7 @@ make_sz_key <- function(W, keywords, info)
       topic <- as.integer(unlist(topic, use.names = FALSE))
       return(topic)
     }
-
+    
     # if the word is a seed, assign the appropriate (0 start) Z, else a random Z
     topicvec <- 1:(info$total_k) - 1L
     make_z <- function(s, topicvec) {
@@ -1017,17 +1060,17 @@ make_sz_key <- function(W, keywords, info)
       return(zz)
     }
   }
-
+  
   ## ss indicates whether the word comes from a seed topic-word distribution or not
   make_s <- function(s) {
     key <- as.numeric(s %in% key_wdids) # 1 if they're a seed
     # Use s structure
     s[key == 0] <- 0L # non-keyword words have s = 0
     s[key == 1] <- sample(0:1, length(s[key == 1]), prob = c(0.3, 0.7), replace = TRUE)
-      # keywords have x = 1 probabilistically
+    # keywords have x = 1 probabilistically
     return(s)
   }
-
+  
   if (info$parallel_init) {
     S <- parallel::mclapply(W, make_s, mc.cores = info$num_core, mc.set.seed = FALSE)
     Z <- parallel::mclapply(W, make_z, topicvec, mc.cores = info$num_core, mc.set.seed = FALSE)
@@ -1035,7 +1078,7 @@ make_sz_key <- function(W, keywords, info)
     S <- lapply(W, make_s)
     Z <- lapply(W, make_z, topicvec)
   }
- 
+  
   return(list(S = S, Z = Z))
 }
 
@@ -1049,12 +1092,12 @@ make_sz_lda <- function(W, info)
                  replace = TRUE)
     return(as.integer(zz))
   }  
-
+  
   if (info$parallel_init) {
     Z <- parallel::mclapply(W, make_z, topicvec, mc.cores = info$num_core, mc.set.seed = FALSE)
   } else {
     Z <- lapply(W, make_z, topicvec)
   }
-
+  
   return(list(S = list(), Z = Z))
 }

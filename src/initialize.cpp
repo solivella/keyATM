@@ -111,7 +111,7 @@ void keyATMinitialize::initialize_keyATM()
   int keyword_num_appear;
 
   double u;
-  double prob;
+  //double prob;
   double prob_allK = 1.0 / total_k;
   int index;
   

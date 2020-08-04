@@ -4,7 +4,7 @@
 #' @import magrittr
 keyATM_output <- function(model, keep)
 {
-  message("Creating an output object. It may take time...")
+  message("Creating an output object. This may take time...")
 
   check_arg_type(model, "keyATM_fitted")
 
@@ -70,7 +70,7 @@ keyATM_output <- function(model, keep)
   }
 
   # pi
-  if (model$model %in% c("base", "cov", "hmm", "label")) {
+  if (model$model %in% c("base", "cov", "hmm", "label", "multi")) {
     pi_estimated <- keyATM_output_pi(model$Z, model$S, model$priors$gamma)
   } else {
     pi_estimated <- NULL
@@ -81,7 +81,7 @@ keyATM_output <- function(model, keep)
   }
 
   # Rescale lambda
-  if (model$model %in% c("cov", "ldacov")) {
+  if (model$model %in% c("cov", "ldacov", "multi")) {
     values_iter$Lambda_iter <- model$stored_values$Lambda_iter
   }
 
@@ -90,7 +90,7 @@ keyATM_output <- function(model, keep)
   information <- list(date_output_made = Sys.time(), version_keyATM = pd$Version)
 
   # Check what to keep
-  if (model$model %in% c("cov", "ldacov")) {
+  if (model$model %in% c("cov", "ldacov","multi")) {
     if (!"stored_values" %in% keep)
       keep <- c("stored_values", keep)
 
@@ -194,8 +194,13 @@ keyATM_output_theta <- function(model, info)
 
   # Theta
   if (model$model %in% c("cov", "ldacov")) {
-    Alpha <- exp(model$model_settings$covariates_data_use %*% t(model$stored_values$Lambda_iter[[length(model$stored_values$Lambda_iter)]]))
-
+    Alpha <- mapply(function(X,Beta)
+    {
+      exp(X %*% t(Beta))
+    }, model$model_settings$covariates_data_use, model$stored_values$Lambda_iter[[length(model$stored_values$Lambda_iter)]]
+    , SIMPLIFY = FALSE)
+    
+    Alpha <- do.call(rbind, Alpha)
     posterior_z_cov <- function(docid) {
       zvec <- model$Z[[docid]]
       alpha <- Alpha[docid, ]
@@ -246,7 +251,7 @@ keyATM_output_phi <- function(model, info)
   all_words <- model$vocab[as.integer(unlist(model$W, use.names = FALSE)) + 1L]
   all_topics <- as.integer(unlist(model$Z, use.names = FALSE))
 
-  if (model$model %in% c("base", "cov", "hmm", "label")) {
+  if (model$model %in% c("base", "cov", "hmm", "label", "multi")) {
     pi_estimated <- keyATM_output_pi(model$Z, model$S, model$priors$gamma)
     all_s <- as.integer(unlist(model$S, use.names = FALSE))
 
@@ -468,7 +473,7 @@ keyATM_output_phi_calc_lda <- function(all_words, all_topics, vocab, priors, tna
 #' @import magrittr
 keyATM_output_theta_iter <- function(model, info)
 {
-  if (model$model %in% c("cov", "ldacov")) {
+  if (model$model %in% c("cov", "ldacov", "multi")) {
     posterior_theta <- function(x) {
       Z_table <- model$stored_values$Z_tables[[x]]
       lambda <- model$stored_values$Lambda_iter[[x]]

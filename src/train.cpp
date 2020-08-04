@@ -11,6 +11,7 @@
 // keyATM models
 #include "keyATM_base.h"
 #include "keyATM_cov.h"
+#include "keyATM_multi.h"
 #include "keyATM_HMM.h"
 #include "keyATM_label.h"
 
@@ -61,6 +62,21 @@ List keyATM_fit_cov(List model, int iter = 0)
   return model;
 }
 
+//' Run the Collapsed Gibbs sampler for the keyATM multicorpora with covariates
+//'
+//' @param model A initialized model
+//' @param iter Required number of iterations
+//'
+//' @keywords internal
+// [[Rcpp::export]]
+List keyATM_fit_multi(List model, int iter = 0)
+{
+  keyATMmulticov keyATMmulticov_model(model, iter);
+  keyATMmulticov_model.fit();
+  model = keyATMmulticov_model.return_model();
+  return model;
+}
+  
 
 //' Run the Collapsed Gibbs sampler for the keyATM Dynamic
 //'

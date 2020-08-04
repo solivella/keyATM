@@ -96,6 +96,15 @@ keyATM <- function(docs, model, no_keyword_topics,
     check_arg_type(keep, "character")
 
   model <- full_model_name(model, type="keyATM")
+  
+  ## Check multicorpora
+   if(model == "multi"){
+        check_multi(docs)
+        docs <- do.call(c, docs)
+        class(docs) <- c("keyATM_docs", "list")
+      }
+    
+    
 
   # Fit keyATM
   fitted <- keyATM_fit(
